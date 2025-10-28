@@ -1,6 +1,8 @@
 open System
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
+open Giraffe
+
 
 [<EntryPoint>]
 let main args =
@@ -11,9 +13,12 @@ let main args =
         // 4. Loads command line arguments
         WebApplication.CreateBuilder(args)
 
+    builder.Services.AddGiraffe() |> ignore
     let app = builder.Build()
 
-    app.MapGet("/", Func<string>(fun () -> "Hello World!")) |> ignore
+    let webApp = route "/" >=> text "Hello World!"
+
+    app.UseGiraffe webApp
 
     app.Run()
 
