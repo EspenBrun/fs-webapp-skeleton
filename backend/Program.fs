@@ -1,8 +1,7 @@
-open System
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.DependencyInjection
 open Giraffe
-
 
 [<EntryPoint>]
 let main args =
@@ -14,7 +13,12 @@ let main args =
         WebApplication.CreateBuilder(args)
 
     builder.Services.AddGiraffe() |> ignore
+    builder.Services.AddCors() |> ignore
+
     let app = builder.Build()
+
+    app.UseCors(fun policy -> policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader() |> ignore)
+    |> ignore
 
     let webApp = route "/" >=> text "Hello World!"
 
