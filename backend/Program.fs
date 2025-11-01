@@ -2,8 +2,10 @@ open System.Reflection
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
-open Giraffe
 open DbUp
+open Dapper.FSharp.MySQL
+open MySqlConnector
+open Giraffe
 
 let runMigrations (connectionString: string) =
     let upgrader =
@@ -20,6 +22,11 @@ let runMigrations (connectionString: string) =
     else
         failwith $"❌ Database upgrade failed: {result.Error.Message}"
 
+type Todo =
+    { Id: int
+      Description: string
+      Status: string }
+
 [<EntryPoint>]
 let main args =
     let builder =
@@ -33,6 +40,41 @@ let main args =
 
     EnsureDatabase.For.MySqlDatabase(connectionString)
     runMigrations connectionString
+
+    // Configure option types for Dapper
+    OptionTypes.register ()
+
+    task {
+        use conn = new MySqlConnection(connectionString)
+
+        let newTodo =
+            { Id = 0
+              Description = "Learn F# with Dapper.FSharp"
+              Status = "in-progress" }
+
+        let! inserted =
+            insert {
+                into table<Todo>
+                value newTodo
+            }
+            |> conn.InsertAsync
+
+        printfn $"✅ Inserted todo with id: {inserted}"
+
+        let! retrieved =
+            select {
+                for t in table<Todo> do
+                    where (t.Id = inserted)
+            }
+            |> conn.SelectAsync<Todo>
+
+        retrieved
+        |> Seq.toList
+        |> List.iter (fun todo -> printfn $"📝 Retrieved todo: {todo.Description} - Status: {todo.Status}")
+
+    }
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
 
     builder.Services.AddGiraffe() |> ignore
     builder.Services.AddCors() |> ignore
