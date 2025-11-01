@@ -1,7 +1,24 @@
+open System.Reflection
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
+open DbUp
+
+let runMigrations (connectionString: string) =
+    let upgrader =
+        DeployChanges.To
+            .MySqlDatabase(connectionString)
+            .WithScriptsEmbeddedInAssembly(Assembly.GetExecutingAssembly(), fun script -> script.EndsWith ".sql")
+            .LogToConsole()
+            .Build()
+
+    let result = upgrader.PerformUpgrade()
+
+    if result.Successful then
+        printfn "✅ Database upgrade successful"
+    else
+        failwith $"❌ Database upgrade failed: {result.Error.Message}"
 
 [<EntryPoint>]
 let main args =
@@ -11,6 +28,11 @@ let main args =
         // 3. Loads environment variables
         // 4. Loads command line arguments
         WebApplication.CreateBuilder(args)
+
+    let connectionString = builder.Configuration["ConnectionString"]
+
+    EnsureDatabase.For.MySqlDatabase(connectionString)
+    runMigrations connectionString
 
     builder.Services.AddGiraffe() |> ignore
     builder.Services.AddCors() |> ignore
