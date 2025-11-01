@@ -1,5 +1,6 @@
 source https://api.nuget.org/v3/index.json
 
 storage: none
+nuget Dapper.FSharp
 nuget dbup-mysql
 nuget Giraffe

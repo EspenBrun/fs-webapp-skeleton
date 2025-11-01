@@ -1,6 +1,10 @@
 STORAGE: NONE
 NUGET
   remote: https://api.nuget.org/v3/index.json
+    Dapper (2.1.66) - restriction: >= net8.0
+    Dapper.FSharp (4.9)
+      Dapper (>= 2.1.35) - restriction: >= net8.0
+      FSharp.Core (>= 8.0.200) - restriction: >= net8.0
     dbup-core (6.0.4) - restriction: >= netstandard2.0
       Microsoft.Extensions.Logging.Abstractions (>= 8.0) - restriction: >= netstandard2.0
     dbup-mysql (6.0.4)
