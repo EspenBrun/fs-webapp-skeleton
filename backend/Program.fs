@@ -4,7 +4,6 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
 open DbUp
 open Dapper.FSharp.MySQL
-open MySqlConnector
 open Giraffe
 
 let runMigrations (connectionString: string) =
@@ -22,11 +21,6 @@ let runMigrations (connectionString: string) =
     else
         failwith $"❌ Database upgrade failed: {result.Error.Message}"
 
-type Todo =
-    { Id: int
-      Description: string
-      Status: string }
-
 [<EntryPoint>]
 let main args =
     let builder =
@@ -38,43 +32,11 @@ let main args =
 
     let connectionString = builder.Configuration["ConnectionString"]
 
-    EnsureDatabase.For.MySqlDatabase(connectionString)
+    EnsureDatabase.For.MySqlDatabase connectionString
     runMigrations connectionString
 
     // Configure option types for Dapper
     OptionTypes.register ()
-
-    task {
-        use conn = new MySqlConnection(connectionString)
-
-        let newTodo =
-            { Id = 0
-              Description = "Learn F# with Dapper.FSharp"
-              Status = "in-progress" }
-
-        let! inserted =
-            insert {
-                into table<Todo>
-                value newTodo
-            }
-            |> conn.InsertAsync
-
-        printfn $"✅ Inserted todo with id: {inserted}"
-
-        let! retrieved =
-            select {
-                for t in table<Todo> do
-                    where (t.Id = inserted)
-            }
-            |> conn.SelectAsync<Todo>
-
-        retrieved
-        |> Seq.toList
-        |> List.iter (fun todo -> printfn $"📝 Retrieved todo: {todo.Description} - Status: {todo.Status}")
-
-    }
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
 
     builder.Services.AddGiraffe() |> ignore
     builder.Services.AddCors() |> ignore
@@ -84,7 +46,10 @@ let main args =
     app.UseCors(fun policy -> policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader() |> ignore)
     |> ignore
 
-    let webApp = route "/" >=> text "Hello World!"
+    let webApp =
+        choose
+            [ route "/" >=> text "Hello World!"
+              subRoute "/api/todos" (Todo.handlers connectionString) ]
 
     app.UseGiraffe webApp
 
